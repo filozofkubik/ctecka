@@ -1,8 +1,14 @@
 #include <Arduino.h>
+#include <HTTPClient.h>
 #include <SPI.h>
 #include <GxEPD2_4C.h>
+#include <WiFi.h>
 
 namespace {
+
+constexpr char wifiSsid[] = "k";
+constexpr char wifiPassword[] = "hhh123456";
+constexpr char serverUrl[] = "http://192.168.78.253:8080/api/data";
 
 constexpr uint8_t epdMosi = 11;
 constexpr uint8_t epdSck = 12;
@@ -11,10 +17,108 @@ constexpr uint8_t epdDc = 48;
 constexpr uint8_t epdRst = 45;
 constexpr uint8_t epdBusy = 38;
 constexpr uint8_t peripheralPower = 47;
+constexpr unsigned long screenUpdateIntervalMs = 10UL * 60UL * 1000UL;
+constexpr unsigned long serverFetchIntervalMs = 60UL * 60UL * 1000UL;
+constexpr unsigned long fullRefreshIntervalMs = 60UL * 60UL * 1000UL;
+constexpr int16_t counterTextX = 212;
+constexpr int16_t counterTextY = 50;
+constexpr uint16_t counterWindowX = 208;
+constexpr uint16_t counterWindowY = 48;
+constexpr uint16_t counterWindowWidth = 128;
+constexpr uint16_t counterWindowHeight = 24;
+constexpr uint16_t partialUpdatesPerFullRefresh = 120;
 
 GxEPD2_4C<GxEPD2_750c_GDEM075F52,
-          GxEPD2_750c_GDEM075F52::HEIGHT / 2>
+          GxEPD2_750c_GDEM075F52::HEIGHT>
     display(GxEPD2_750c_GDEM075F52(epdCs, epdDc, epdRst, epdBusy));
+
+uint32_t counter = 0;
+uint8_t counterColorIndex = 0;
+unsigned long lastCounterUpdateMs = 0;
+unsigned long lastFullRefreshMs = 0;
+uint16_t partialUpdateCount = 0;
+constexpr uint16_t counterColors[] = {
+    GxEPD_BLACK, GxEPD_RED, GxEPD_YELLOW};
+
+bool connectToWifi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return true;
+  }
+
+  Serial.print("Pripojuji se k Wi-Fi");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifiSsid, wifiPassword);
+
+  const unsigned long startMs = millis();
+  while (WiFi.status() != WL_CONNECTED &&
+         millis() - startMs < 20000UL) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("\nPripojeni k Wi-Fi se nepodarilo.");
+    return false;
+  }
+
+  Serial.print("\nWi-Fi pripojena, IP adresa: ");
+  Serial.println(WiFi.localIP());
+  return true;
+}
+
+void fetchServerData() {
+  if (!connectToWifi()) {
+    return;
+  }
+
+  HTTPClient http;
+  if (!http.begin(serverUrl)) {
+    Serial.println("Nepodarilo se pripravit HTTP pozadavek.");
+    return;
+  }
+
+  const int statusCode = http.GET();
+  if (statusCode < 0) {
+    Serial.print("HTTP pozadavek selhal: ");
+    Serial.println(http.errorToString(statusCode));
+  } else if (statusCode >= 200 && statusCode < 300) {
+    Serial.println("Odpoved serveru:");
+    Serial.println(http.getString());
+  } else {
+    Serial.print("Server vratil HTTP status: ");
+    Serial.println(statusCode);
+  }
+
+  http.end();
+}
+
+void drawCounter(bool fullRefresh) {
+  if (fullRefresh) {
+    display.setFullWindow();
+  } else {
+    display.setPartialWindow(
+        counterWindowX, counterWindowY,
+        counterWindowWidth, counterWindowHeight);
+  }
+
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    if (fullRefresh) {
+      display.setTextSize(2);
+      display.setTextColor(GxEPD_BLACK);
+      display.setCursor(20, counterTextY);
+      display.print("Aktualni citac: ");
+    }
+    display.setTextSize(2);
+    display.setTextColor(counterColors[counterColorIndex]);
+    display.setCursor(counterTextX, counterTextY);
+    display.print(counter);
+  } while (display.nextPage());
+
+  Serial.print("Aktualni citac: ");
+  Serial.println(counter);
+}
 
 }  // namespace
 
@@ -28,20 +132,40 @@ void setup() {
   SPI.begin(epdSck, 13, epdMosi, epdCs);
   display.init();
   display.setRotation(1);
-  display.setFullWindow();
-
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-    display.setTextColor(GxEPD_BLACK);
-    display.setTextSize(4);
-    display.setCursor(20, 20);
-    display.print("Ahoj!");
-     display.setCursor(40, 40);
-    display.print("Ahoj!");
-  } while (display.nextPage());
-
-  Serial.println("Na displeji je Ahoj!");
+  drawCounter(true);
+  lastCounterUpdateMs = millis();
+  lastFullRefreshMs = lastCounterUpdateMs;
+  fetchServerData();
 }
 
-void loop() {}
+void loop() {
+  static unsigned long lastServerFetchMs = millis();
+  const unsigned long now = millis();
+
+  if (now - lastCounterUpdateMs >= screenUpdateIntervalMs) {
+    const unsigned long elapsedIntervals =
+        (now - lastCounterUpdateMs) / screenUpdateIntervalMs;
+    counter += elapsedIntervals;
+    lastCounterUpdateMs += elapsedIntervals * screenUpdateIntervalMs;
+    counterColorIndex =
+        (counterColorIndex + elapsedIntervals) %
+        (sizeof(counterColors) / sizeof(counterColors[0]));
+
+    const bool fullRefreshDue =
+        now - lastFullRefreshMs >= fullRefreshIntervalMs ||
+        partialUpdateCount >= partialUpdatesPerFullRefresh;
+    drawCounter(fullRefreshDue);
+
+    if (fullRefreshDue) {
+      lastFullRefreshMs = millis();
+      partialUpdateCount = 0;
+    } else {
+      partialUpdateCount++;
+    }
+  }
+
+  if (now - lastServerFetchMs >= serverFetchIntervalMs) {
+    fetchServerData();
+    lastServerFetchMs = now;
+  }
+}
