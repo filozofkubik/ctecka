@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "1evCXiWcZ+M=",
+  "success": true,
+  "projectFilePath": "C:\\ctecka\\servisy\\WebProEIng\\WebProEIng\\WebProEIng.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\jakub\\.nuget\\packages\\microsoft.visualstudio.azure.containers.tools.targets\\1.24.2-preview.1\\microsoft.visualstudio.azure.containers.tools.targets.1.24.2-preview.1.nupkg.sha512"
+  ],
+  "logs": []
+}
