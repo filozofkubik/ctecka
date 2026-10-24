@@ -1,0 +1,8 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/servisy/WebProEIng/.vs
+/servisy/WebProEIng/test/bin/Debug/net10.0
+/servisy/WebProEIng/test/obj/Debug/net10.0
+/servisy/WebProEIng/WebProEIng/wwwroot/lib
