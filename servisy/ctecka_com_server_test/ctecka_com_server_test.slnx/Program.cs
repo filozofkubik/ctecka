@@ -17,6 +17,83 @@ class TestClient
         }
         else { Console.WriteLine("adresarneexistujee"+ jmenoadresare); }
     }
+    private static void volatecho(string textecho,  string ipAdresa, int port) {
+
+        try
+        {
+
+            Console.WriteLine("Připojuji se k serveru...");
+            using (TcpClient client = new TcpClient(ipAdresa, port))
+            using (NetworkStream stream = client.GetStream())
+            {
+                // Zde můžete změnit požadavek na "karta1", "karta2" nebo cokoliv jiného
+                string pozadavek = "echo " + textecho;
+
+                // Převedení zprávy na bajty
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+
+                // Odeslání požadavku na server
+                stream.Write(dataOdeslat, 0, dataOdeslat.Length);
+                Console.WriteLine($"Odesláno na server: {pozadavek}");
+
+                // Příjem odpovědi ze serveru
+                byte[] buffer = new byte[1024000];
+                int pocetBytu = stream.Read(buffer, 0, buffer.Length);
+
+                string odpoved = Encoding.UTF8.GetString(buffer, 0, pocetBytu);
+                Console.WriteLine($"Odpověď od serveru: {odpoved}");
+               
+
+            }
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při komunikaci se serverem: {ex.Message}");
+        }
+
+
+
+    }
+    private static void volatlog(string textlogu, string ipAdresa, int port)
+    {
+
+        try
+        {
+
+            Console.WriteLine("Připojuji se k serveru...");
+            using (TcpClient client = new TcpClient(ipAdresa, port))
+            using (NetworkStream stream = client.GetStream())
+            {
+                // Zde můžete změnit požadavek na "karta1", "karta2" nebo cokoliv jiného
+                string pozadavek = "log " + textlogu;
+
+                // Převedení zprávy na bajty
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+
+                // Odeslání požadavku na server
+                stream.Write(dataOdeslat, 0, dataOdeslat.Length);
+                Console.WriteLine($"Odesláno na server: {pozadavek}");
+
+                // Příjem odpovědi ze serveru
+                byte[] buffer = new byte[1024000];
+                int pocetBytu = stream.Read(buffer, 0, buffer.Length);
+
+                string odpoved = Encoding.UTF8.GetString(buffer, 0, pocetBytu);
+                Console.WriteLine($"Odpověď od serveru: {odpoved}");
+
+
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při komunikaci se serverem: {ex.Message}");
+        }
+
+
+
+    }
     private static void ulozsoubor(string pozadavek, string jmenosouboru,string ipAdresa, int port,string adresarpameti)
     {
         try
@@ -55,16 +132,7 @@ class TestClient
 
 
     }
-    static void Main()
-    {
-        // IP adresa serveru (pokud běží na stejném počítači, použijte "127.5000" -> "127.0.0.1")
-        string ipAdresa = "127.0.0.1";
-        int port = 5000;
-        string adresarpameti = @"c:\ctecka\com_ctecka_test\pamet\";
-        string adresarkarty = @"c:\ctecka\com_ctecka_test\karta\";
-        smazadresar(adresarpameti);
-        smazadresar(adresarkarty);
-        // TODO: načíst konfigurace; adresář; číslo portu; ...
+    private static void stahnisoubory(string adresarkarty, string ipAdresa, int port) {
         try
         {
             string[] x;
@@ -88,24 +156,37 @@ class TestClient
 
                 string odpoved = Encoding.UTF8.GetString(buffer, 0, pocetBytu);
                 Console.WriteLine($"Odpověď od serveru: {odpoved}");
-                  x =odpoved.Split(";");
-            
+                x = odpoved.Split(";");
+
             }
             foreach (string a in x)
             {
-                ulozsoubor("file_"+a, a, ipAdresa, port, adresarkarty);
+                ulozsoubor("file_" + a, a, ipAdresa, port, adresarkarty);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Chyba při komunikaci se serverem: {ex.Message}");
         }
+    }
+    static void Main()
+    {
+        // IP adresa serveru (pokud běží na stejném počítači, použijte "127.5000" -> "127.0.0.1")
+        string ipAdresa = "127.0.0.1";
+        int port = 5000;
+        string adresarpameti = @"c:\ctecka\com_ctecka_test\pamet\";
+        string adresarkarty = @"c:\ctecka\com_ctecka_test\karta\";
+        smazadresar(adresarpameti);
+        smazadresar(adresarkarty);
+        // TODO: načíst konfigurace; adresář; číslo portu; ...
+        
 
         
         ulozsoubor("obnov.txt", "obnov.txt", ipAdresa, port, adresarpameti);
         ulozsoubor("stranka.txt", "stranka.txt", ipAdresa, port, adresarpameti);
-
-
+        stahnisoubory(adresarkarty, ipAdresa, port);
+        volatecho("Hello, Server!", ipAdresa, port);
+        volatlog("This is a test log message.", ipAdresa, port);
         Console.WriteLine("\nStiskněte libovolnou klávesu pro ukončení...");
         Console.ReadKey();
     }

@@ -39,7 +39,7 @@ class Program
 
             if (pozadavek == "obnov.txt")
             {
-                
+
                 Console.WriteLine("pozadavekobnov");
                 data = nactidatazesouboru(cestaKAdresari + "obnov.txt");
             }
@@ -60,8 +60,19 @@ class Program
                 data = Encoding.UTF8.GetBytes(odpoved);
 
             }
+            else if (pozadavek.Substring(0, 4) == "echo")
+            {
+                data = Encoding.UTF8.GetBytes("Echo: " + pozadavek.Substring(4));
+                Console.WriteLine("pozadavek echo: " + pozadavek.Substring(4));
+            }
+            else if (pozadavek.Substring(0, 3) == "log")
+            {
+                data = Encoding.UTF8.GetBytes(" ");
+                Console.WriteLine("pozadavek log: " + pozadavek.Substring(3));
+            }
             else if (pozadavek.Contains("file"))//tvarparametru file_nazevsouboru
-            {string nazevsouboru = pozadavek.Substring(5); // Odstranění prefixu "file_"
+            {
+                string nazevsouboru = pozadavek.Substring(5); // Odstranění prefixu "file_"
                 Console.WriteLine("priselpozadaveknasoubor");
                 odpoved = "pozadavekdpoved";
                 data = nactidatazesouboru(cestaKAdresari + nazevsouboru);
@@ -69,7 +80,9 @@ class Program
             else
             {
                 odpoved = "Nenalezeno";
+
                 data = Encoding.UTF8.GetBytes(odpoved);
+                Console.WriteLine("pozadaveknenalezeno");
             }
 
              
