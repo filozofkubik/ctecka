@@ -1,0 +1,3 @@
+20;20;10;red;ahoj;
+60;60;10;black;kuba;
+100;100;100;yellow;pes;
