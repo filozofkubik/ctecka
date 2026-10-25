@@ -30,7 +30,7 @@ class Program
 
             NetworkStream stream = client.GetStream();
 
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[10240000];
             int pocetBytu = stream.Read(buffer, 0, buffer.Length);
 
             string pozadavek = Encoding.UTF8.GetString(buffer, 0, pocetBytu);
@@ -46,7 +46,7 @@ class Program
 
             else if (pozadavek == "stranka.txt")
             {
-                Console.WriteLine("pozadavekstranka");
+                Console.WriteLine("pozadavekstranka xxxxxx");
                 data = nactidatazesouboru(cestaKAdresari + "stranka.txt");
             }
             else if (pozadavek == "seznamobrazu.txt")
