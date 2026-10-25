@@ -4,9 +4,14 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 class Program
 {
+    private static byte[] nactidatazesouboru  (string jmenosouboruu)
+    {
+        return  File.ReadAllBytes(jmenosouboruu);
+    }
     static void Main()
     {
         TcpListener server = new TcpListener(IPAddress.Any, 5000);
@@ -34,16 +39,15 @@ class Program
 
             if (pozadavek == "obnov.txt")
             {
-                byte[] dataToSend = null;
+                
                 Console.WriteLine("pozadavekobnov");
-                data = File.ReadAllBytes(cestaKAdresari + "obnov.txt");
+                data = nactidatazesouboru(cestaKAdresari + "obnov.txt");
             }
 
             else if (pozadavek == "stranka.txt")
             {
                 Console.WriteLine("pozadavekstranka");
-                odpoved = "Drak;20";
-                data = Encoding.UTF8.GetBytes(odpoved);
+                data = nactidatazesouboru(cestaKAdresari + "stranka.txt");
             }
             else if (pozadavek == "seznamobrazu.txt")
             {
@@ -56,11 +60,11 @@ class Program
                 data = Encoding.UTF8.GetBytes(odpoved);
 
             }
-            else if (pozadavek.Contains("file"))
-            {
+            else if (pozadavek.Contains("file"))//tvarparametru file_nazevsouboru
+            {string nazevsouboru = pozadavek.Substring(5); // Odstranění prefixu "file_"
                 Console.WriteLine("priselpozadaveknasoubor");
                 odpoved = "pozadavekdpoved";
-                data = Encoding.UTF8.GetBytes(odpoved);
+                data = nactidatazesouboru(cestaKAdresari + nazevsouboru);
             }
             else
             {
