@@ -1,14 +1,16 @@
 #include <Arduino.h>
-#include <HTTPClient.h>
 #include <SPI.h>
 #include <GxEPD2_4C.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
 
 namespace {
 
 constexpr char wifiSsid[] = "k";
 constexpr char wifiPassword[] = "hhh123456";
-constexpr char serverUrl[] = "http://192.168.78.253:8080/api/data";
+const IPAddress serverIp(192, 168, 88, 252);
+constexpr uint16_t serverPort = 5000;
+constexpr char echoRequest[] = "echo test z ESP32";
 
 constexpr uint8_t epdMosi = 11;
 constexpr uint8_t epdSck = 12;
@@ -17,8 +19,9 @@ constexpr uint8_t epdDc = 48;
 constexpr uint8_t epdRst = 45;
 constexpr uint8_t epdBusy = 38;
 constexpr uint8_t peripheralPower = 47;
+constexpr unsigned long serverCycleIntervalMs = 10UL * 1000UL;
+constexpr unsigned long renderingIntervalMs = 10UL * 60UL * 1000UL;
 constexpr unsigned long screenUpdateIntervalMs = 10UL * 60UL * 1000UL;
-constexpr unsigned long serverFetchIntervalMs = 60UL * 60UL * 1000UL;
 constexpr unsigned long fullRefreshIntervalMs = 60UL * 60UL * 1000UL;
 constexpr int16_t counterTextX = 212;
 constexpr int16_t counterTextY = 50;
@@ -36,6 +39,8 @@ uint32_t counter = 0;
 uint8_t counterColorIndex = 0;
 unsigned long lastCounterUpdateMs = 0;
 unsigned long lastFullRefreshMs = 0;
+unsigned long lastServerCycleMs = 0;
+unsigned long lastRenderingMs = 0;
 uint16_t partialUpdateCount = 0;
 constexpr uint16_t counterColors[] = {
     GxEPD_BLACK, GxEPD_RED, GxEPD_YELLOW};
@@ -66,30 +71,49 @@ bool connectToWifi() {
   return true;
 }
 
-void fetchServerData() {
+void testServerEcho() {
   if (!connectToWifi()) {
     return;
   }
 
-  HTTPClient http;
-  if (!http.begin(serverUrl)) {
-    Serial.println("Nepodarilo se pripravit HTTP pozadavek.");
+  WiFiClient client;
+  Serial.print("Pripojuji se k TCP serveru ");
+  Serial.print(serverIp);
+  Serial.print(":");
+  Serial.println(serverPort);
+  if (!client.connect(serverIp, serverPort)) {
+    Serial.println("Pripojeni k TCP serveru se nepodarilo.");
     return;
   }
 
-  const int statusCode = http.GET();
-  if (statusCode < 0) {
-    Serial.print("HTTP pozadavek selhal: ");
-    Serial.println(http.errorToString(statusCode));
-  } else if (statusCode >= 200 && statusCode < 300) {
-    Serial.println("Odpoved serveru:");
-    Serial.println(http.getString());
-  } else {
-    Serial.print("Server vratil HTTP status: ");
-    Serial.println(statusCode);
+  Serial.print("Odesilam pozadavek: ");
+  Serial.println(echoRequest);
+  client.print(echoRequest);
+
+  size_t responseBytes = 0;
+  const unsigned long responseStartMs = millis();
+  Serial.print("Odpoved serveru: ");
+  while ((client.connected() || client.available()) &&
+         millis() - responseStartMs < 10000UL) {
+    while (client.available()) {
+      Serial.write(client.read());
+      responseBytes++;
+    }
+    delay(1);
   }
 
-  http.end();
+  if (responseBytes == 0) {
+    Serial.println("<bez odpovedi>");
+  } else {
+    Serial.println();
+    Serial.print("Prijato bajtu: ");
+    Serial.println(responseBytes);
+  }
+  client.stop();
+}
+
+void renderContent() {
+  // Pripraveno pro budoucí vykreslování.
 }
 
 void drawCounter(bool fullRefresh) {
@@ -135,11 +159,12 @@ void setup() {
   drawCounter(true);
   lastCounterUpdateMs = millis();
   lastFullRefreshMs = lastCounterUpdateMs;
-  fetchServerData();
+  lastRenderingMs = lastCounterUpdateMs;
+  testServerEcho();
+  lastServerCycleMs = millis();
 }
 
 void loop() {
-  static unsigned long lastServerFetchMs = millis();
   const unsigned long now = millis();
 
   if (now - lastCounterUpdateMs >= screenUpdateIntervalMs) {
@@ -164,8 +189,13 @@ void loop() {
     }
   }
 
-  if (now - lastServerFetchMs >= serverFetchIntervalMs) {
-    fetchServerData();
-    lastServerFetchMs = now;
+  if (now - lastServerCycleMs >= serverCycleIntervalMs) {
+    testServerEcho();
+    lastServerCycleMs = millis();
+  }
+
+  if (now - lastRenderingMs >= renderingIntervalMs) {
+    renderContent();
+    lastRenderingMs = now;
   }
 }
