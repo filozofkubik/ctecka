@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -12,9 +13,33 @@ class Program
     {
         return  File.ReadAllBytes(jmenosouboruu);
     }
+    private static void VypisDostupneIPAdresy(int port)
+    {
+        Console.WriteLine("Server je dostupný na těchto IP adresách:");
+
+        // Procházení aktivních síťových rozhraní
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            // Filtrujeme pouze aktivní (zapnutá) rozhraní, která nejsou typu Loopback (127.0.0.1)
+            if (networkInterface.OperationalStatus == OperationalStatus.Up &&
+                networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            {
+                foreach (var ipProperty in networkInterface.GetIPProperties().UnicastAddresses)
+                {
+                    // Zajímá nás pouze IPv4 adresa
+                    if (ipProperty.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        Console.WriteLine($"  -> {ipProperty.Address} (Port: {port})");
+                    }
+                }
+            }
+        }
+    }
     static void Main()
     {
-        TcpListener server = new TcpListener(IPAddress.Any, 5000);
+        int port = 5000; // Změňte na požadované číslo portu
+        VypisDostupneIPAdresy(port);
+        TcpListener server = new TcpListener(IPAddress.Any, port);
         byte[] data;
         server.Start();
 
