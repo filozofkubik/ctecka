@@ -1,0 +1,11 @@
+dotnet run --project .\log_client\LogClient.csproj -- 192.168.78.254 
+
+
+
+
+
+
+spustit v adresari: c:\ctecka\hw\PlatformIO\Projects\test_ctecka>
+
+
+dotnet run --project c:\ctecka\hw\PlatformIO\Projects\test_ctecka\log_client\LogClient.csproj -- 192.168.78.254 

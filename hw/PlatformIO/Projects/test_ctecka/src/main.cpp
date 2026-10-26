@@ -22,7 +22,6 @@ constexpr uint8_t epdBusy = 38;
 constexpr uint8_t peripheralPower = 47;
 
 constexpr unsigned long wifiRetryIntervalMs = 10000UL;
-constexpr unsigned long displayRefreshIntervalMs = 60000UL;
 constexpr size_t maxLogFileSize = 64 * 1024;
 
 GxEPD2_4C<GxEPD2_750c_GDEM075F52,
@@ -32,8 +31,11 @@ WiFiServer logServer(logServerPort);
 
 bool logStorageReady = false;
 bool serverStarted = false;
+bool statusDisplayInitialized = false;
+bool lastDisplayedWifiConnected = false;
+bool lastDisplayedServerStarted = false;
+String lastDisplayedIpAddress;
 unsigned long lastWifiAttemptMs = 0;
-unsigned long lastDisplayRefreshMs = 0;
 
 void logMessage(const String& message) {
   String line = String(millis()) + " ms: " + message + "\n";
@@ -70,10 +72,17 @@ void logMessage(const String& message) {
   file.close();
 }
 
-void drawStatusDisplay() {
+void updateStatusDisplayIfChanged() {
   const bool connected = WiFi.status() == WL_CONNECTED;
   const String ipAddress =
       connected ? WiFi.localIP().toString() : String("nedostupna");
+
+  if (statusDisplayInitialized &&
+      connected == lastDisplayedWifiConnected &&
+      ipAddress == lastDisplayedIpAddress &&
+      serverStarted == lastDisplayedServerStarted) {
+    return;
+  }
 
   display.firstPage();
   do {
@@ -91,6 +100,11 @@ void drawStatusDisplay() {
     display.setCursor(20, 245);
     display.print(serverStarted ? "Server: BEZI" : "Server: CEKA NA WI-FI");
   } while (display.nextPage());
+
+  lastDisplayedWifiConnected = connected;
+  lastDisplayedIpAddress = ipAddress;
+  lastDisplayedServerStarted = serverStarted;
+  statusDisplayInitialized = true;
 }
 
 void startWifi() {
@@ -182,26 +196,13 @@ void setup() {
   display.setFullWindow();
 
   startWifi();
-  drawStatusDisplay();
-  lastDisplayRefreshMs = millis();
+  updateStatusDisplayIfChanged();
 }
 
 void loop() {
   maintainWifiAndServer();
   handleTcpClient();
-
-  const unsigned long now = millis();
-  if (now - lastDisplayRefreshMs >= displayRefreshIntervalMs) {
-    drawStatusDisplay();
-    lastDisplayRefreshMs = now;
-
-    const bool connected = WiFi.status() == WL_CONNECTED;
-    logMessage(connected
-                   ? "Stav: Wi-Fi pripojena, IP " +
-                         WiFi.localIP().toString() + ", TCP port " +
-                         String(logServerPort) + "."
-                   : "Stav: Wi-Fi nepripojena.");
-  }
+  updateStatusDisplayIfChanged();
 
   delay(1);
 }
