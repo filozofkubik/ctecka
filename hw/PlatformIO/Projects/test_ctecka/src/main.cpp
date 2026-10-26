@@ -2,6 +2,12 @@
 // Popis desky: https://www.laskakit.cz/laskakit-espink-frame-7-x-e-paper-board/
 // Projekt desky: https://github.com/LaskaKit/ESPink-Frame-7x
 // Pouzity displej: GDEM075F52
+/* funkční commit pro nahrání do čtečky Author: filozofkubik <jakub.santora.g@gmail.com>
+Date: 26.10.2026 21:10:46
+Commit hash: c5c6fd4bc500e87c41e3e166da48b89110fdeab1
+
+Funkční verze, která lze nahrát  píše 2x ahoj přes sebe
+*/
 /*
 # Restartuje hardware starající se o COM3 (odpojí a znovu připojí zařízení v systému)
 Get-CimInstance Win32_PnPEntity | Where-Object { $_.Caption -match 'COM3' } | Disable-PnpDevice -Confirm:$false; Get-CimInstance Win32_PnPEntity | Where-Object { $_.Caption -match 'COM3' } | Enable-PnpDevice -Confirm:$false
