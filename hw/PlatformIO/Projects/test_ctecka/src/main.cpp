@@ -1,30 +1,17 @@
-// Zdrojovy kod pro desku LaskaKit ESPink-Frame-7.x
-// Popis desky: https://www.laskakit.cz/laskakit-espink-frame-7-x-e-paper-board/
-// Projekt desky: https://github.com/LaskaKit/ESPink-Frame-7x
-// Pouzity displej: GDEM075F52
-/* funkční commit pro nahrání do čtečky Author: filozofkubik <jakub.santora.g@gmail.com>
-Date: 26.10.2026 21:10:46
-Commit hash: c5c6fd4bc500e87c41e3e166da48b89110fdeab1
+// LaskaKit ESPink-Frame-7.x, displej GDEM075F52.
 
-Funkční verze, která lze nahrát  píše 2x ahoj přes sebe
-*/
-/*
-# Restartuje hardware starající se o COM3 (odpojí a znovu připojí zařízení v systému)
-Get-CimInstance Win32_PnPEntity | Where-Object { $_.Caption -match 'COM3' } | Disable-PnpDevice -Confirm:$false; Get-CimInstance Win32_PnPEntity | Where-Object { $_.Caption -match 'COM3' } | Enable-PnpDevice -Confirm:$false
-
-
-*/
 #include <Arduino.h>
 #include <GxEPD2_4C.h>
-#include <HTTPClient.h>
 #include <SPI.h>
+#include <SPIFFS.h>
 #include <WiFi.h>
 
 namespace {
 
 constexpr char wifiSsid[] = "k";
 constexpr char wifiPassword[] = "hhh123456";
-constexpr char serverUrl[] = "http://192.168.1.100:8080/api/data";
+constexpr uint16_t logServerPort = 5500;
+constexpr char logFilePath[] = "/logs.txt";
 
 constexpr uint8_t epdMosi = 11;
 constexpr uint8_t epdSck = 12;
@@ -34,94 +21,156 @@ constexpr uint8_t epdRst = 45;
 constexpr uint8_t epdBusy = 38;
 constexpr uint8_t peripheralPower = 47;
 
-constexpr unsigned long refreshIntervalMs = 60UL * 60UL * 1000UL;
+constexpr unsigned long wifiRetryIntervalMs = 10000UL;
+constexpr unsigned long displayRefreshIntervalMs = 60000UL;
+constexpr size_t maxLogFileSize = 64 * 1024;
 
 GxEPD2_4C<GxEPD2_750c_GDEM075F52,
           GxEPD2_750c_GDEM075F52::HEIGHT / 2>
     display(GxEPD2_750c_GDEM075F52(epdCs, epdDc, epdRst, epdBusy));
+WiFiServer logServer(logServerPort);
 
-bool connectToWifi() {
-  if (WiFi.status() == WL_CONNECTED) {
-    return true;
-  }
+bool logStorageReady = false;
+bool serverStarted = false;
+unsigned long lastWifiAttemptMs = 0;
+unsigned long lastDisplayRefreshMs = 0;
 
-  Serial.print("Pripojuji se k Wi-Fi");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifiSsid, wifiPassword);
+void logMessage(const String& message) {
+  String line = String(millis()) + " ms: " + message + "\n";
+  Serial.print(line);
 
-  const unsigned long startMs = millis();
-  while (WiFi.status() != WL_CONNECTED &&
-         millis() - startMs < 20000UL) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("\nPripojeni k Wi-Fi se nepodarilo.");
-    return false;
-  }
-
-  Serial.print("\nWi-Fi pripojena, IP adresa: ");
-  Serial.println(WiFi.localIP());
-  return true;
-}
-
-void fetchServerData() {
-  if (!connectToWifi()) {
+  if (!logStorageReady) {
     return;
   }
 
-  HTTPClient http;
-  if (!http.begin(serverUrl)) {
-    Serial.println("Nepodarilo se pripravit HTTP pozadavek.");
+  File file = SPIFFS.open(logFilePath, FILE_APPEND);
+  if (!file) {
+    Serial.println("Chyba: nelze otevrit soubor s logem.");
     return;
   }
 
-  const int statusCode = http.GET();
-  if (statusCode < 0) {
-    Serial.print("HTTP pozadavek selhal: ");
-    Serial.println(http.errorToString(statusCode));
-  } else if (statusCode >= 200 && statusCode < 300) {
-    Serial.println("Odpoved serveru:");
-    Serial.println(http.getString());
-  } else {
-    Serial.print("Server vratil HTTP status: ");
-    Serial.println(statusCode);
+  if (file.size() + line.length() > maxLogFileSize) {
+    file.close();
+    if (!SPIFFS.remove(logFilePath)) {
+      Serial.println("Chyba: nelze smazat stary soubor s logem.");
+      return;
+    }
+    file = SPIFFS.open(logFilePath, FILE_WRITE);
+    if (!file) {
+      Serial.println("Chyba: nelze vytvorit novy soubor s logem.");
+      return;
+    }
+    line = String(millis()) + " ms: log zacal znovu po dosazeni limitu\n" +
+           line;
   }
 
-  http.end();
+  if (file.print(line) != line.length()) {
+    Serial.println("Chyba: log se nepodarilo cely ulozit.");
+  }
+  file.close();
 }
 
-void clearDisplay() {
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-  } while (display.nextPage());
-}
+void drawStatusDisplay() {
+  const bool connected = WiFi.status() == WL_CONNECTED;
+  const String ipAddress =
+      connected ? WiFi.localIP().toString() : String("nedostupna");
 
-void drawGreeting() {
   display.firstPage();
   do {
     display.fillScreen(GxEPD_WHITE);
     display.setTextColor(GxEPD_BLACK);
-    display.setTextSize(4);
-    display.setCursor(20, 20);
-    display.print("Ahoj!");
-    display.setCursor(40, 40);
-    display.print("Ahoj!");
+    display.setTextSize(3);
+    display.setCursor(20, 50);
+    display.print(connected ? "Wi-Fi: PRIPOJENO" : "Wi-Fi: NEPRIPOJENO");
+    display.setCursor(20, 115);
+    display.print("IP: ");
+    display.print(ipAddress);
+    display.setCursor(20, 180);
+    display.print("TCP port: ");
+    display.print(logServerPort);
+    display.setCursor(20, 245);
+    display.print(serverStarted ? "Server: BEZI" : "Server: CEKA NA WI-FI");
   } while (display.nextPage());
 }
 
-void refreshDisplay() {
-  clearDisplay();
-  drawGreeting();
-  Serial.println("Displej byl vycisten a znovu vykreslen.");
+void startWifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(wifiSsid, wifiPassword);
+  lastWifiAttemptMs = millis();
+  logMessage("Pripojuji se k Wi-Fi.");
+}
+
+void maintainWifiAndServer() {
+  const unsigned long now = millis();
+  const bool connected = WiFi.status() == WL_CONNECTED;
+
+  if (connected && !serverStarted) {
+    logServer.begin();
+    serverStarted = true;
+    logMessage("Wi-Fi pripojena. IP: " + WiFi.localIP().toString() +
+               ", log server bezi na portu " + String(logServerPort) + ".");
+  } else if (!connected && serverStarted) {
+    logServer.end();
+    serverStarted = false;
+    logMessage("Wi-Fi spojeni bylo ztraceno.");
+  }
+
+  if (!connected && now - lastWifiAttemptMs >= wifiRetryIntervalMs) {
+    WiFi.disconnect();
+    WiFi.begin(wifiSsid, wifiPassword);
+    lastWifiAttemptMs = now;
+    logMessage("Opakuji pripojeni k Wi-Fi.");
+  }
+}
+
+void sendLogFile(WiFiClient& client) {
+  if (!logStorageReady) {
+    return;
+  }
+
+  File file = SPIFFS.open(logFilePath, FILE_READ);
+  if (!file) {
+    return;
+  }
+
+  uint8_t buffer[512];
+  while (file.available() && client.connected()) {
+    const size_t bytesRead = file.read(buffer, sizeof(buffer));
+    if (bytesRead == 0 || client.write(buffer, bytesRead) != bytesRead) {
+      break;
+    }
+  }
+  file.close();
+}
+
+void handleTcpClient() {
+  WiFiClient client = logServer.accept();
+  if (!client) {
+    return;
+  }
+
+  client.setTimeout(2000);
+  String command = client.readStringUntil('\n');
+  command.trim();
+
+  if (command == "log") {
+    sendLogFile(client);
+  }
+  client.stop();
 }
 
 }  // namespace
 
 void setup() {
   Serial.begin(115200);
+
+  if (SPIFFS.begin(true)) {
+    logStorageReady = true;
+  } else {
+    Serial.println("Chyba: SPIFFS se nepodarilo pripojit.");
+  }
+  logMessage("Zarizeni se spousti.");
 
   pinMode(peripheralPower, OUTPUT);
   digitalWrite(peripheralPower, HIGH);
@@ -131,17 +180,28 @@ void setup() {
   display.init();
   display.setRotation(1);
   display.setFullWindow();
-  refreshDisplay();
-  fetchServerData();
+
+  startWifi();
+  drawStatusDisplay();
+  lastDisplayRefreshMs = millis();
 }
 
 void loop() {
-  static unsigned long lastRefreshMs = millis();
-  const unsigned long now = millis();
+  maintainWifiAndServer();
+  handleTcpClient();
 
-  if (now - lastRefreshMs >= refreshIntervalMs) {
-    fetchServerData();
-    refreshDisplay();
-    lastRefreshMs = now;
+  const unsigned long now = millis();
+  if (now - lastDisplayRefreshMs >= displayRefreshIntervalMs) {
+    drawStatusDisplay();
+    lastDisplayRefreshMs = now;
+
+    const bool connected = WiFi.status() == WL_CONNECTED;
+    logMessage(connected
+                   ? "Stav: Wi-Fi pripojena, IP " +
+                         WiFi.localIP().toString() + ", TCP port " +
+                         String(logServerPort) + "."
+                   : "Stav: Wi-Fi nepripojena.");
   }
+
+  delay(1);
 }
