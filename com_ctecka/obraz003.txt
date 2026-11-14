@@ -1,3 +1,3 @@
-20;20;10;red;čau;
-60;60;10;black;Veronika;
-100;100;100;yellow;kočka;
+T;20;20;10;red;čau;
+T;60;60;10;black;Veronika;
+T;100;100;100;yellow;kočka;
