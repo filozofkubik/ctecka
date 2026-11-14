@@ -232,12 +232,342 @@ void drawCenteredText(const String& text) {
   } while (display.nextPage());
 }
 
+uint16_t readBmpUInt16(const std::vector<uint8_t>& contents, size_t offset) {
+  return static_cast<uint16_t>(contents[offset]) |
+         (static_cast<uint16_t>(contents[offset + 1]) << 8);
+}
+
+uint32_t readBmpUInt32(const std::vector<uint8_t>& contents, size_t offset) {
+  return static_cast<uint32_t>(contents[offset]) |
+         (static_cast<uint32_t>(contents[offset + 1]) << 8) |
+         (static_cast<uint32_t>(contents[offset + 2]) << 16) |
+         (static_cast<uint32_t>(contents[offset + 3]) << 24);
+}
+
+struct BmpInfo {
+  uint32_t pixelOffset;
+  uint32_t width;
+  uint32_t height;
+  size_t rowSize;
+  bool topDown;
+};
+
+bool readBmpInfo(const std::vector<uint8_t>& contents, BmpInfo& info) {
+  if (contents.size() < 54 || contents[0] != 'B' || contents[1] != 'M') {
+    return false;
+  }
+
+  const uint32_t dibSize = readBmpUInt32(contents, 14);
+  const int32_t width = static_cast<int32_t>(readBmpUInt32(contents, 18));
+  const int32_t signedHeight =
+      static_cast<int32_t>(readBmpUInt32(contents, 22));
+  const uint32_t pixelOffset = readBmpUInt32(contents, 10);
+  if (dibSize < 40 || width <= 0 || signedHeight == 0 ||
+      signedHeight == INT32_MIN || readBmpUInt16(contents, 26) != 1 ||
+      readBmpUInt16(contents, 28) != 24 ||
+      readBmpUInt32(contents, 30) != 0 ||
+      static_cast<uint64_t>(pixelOffset) < uint64_t(14) + dibSize ||
+      pixelOffset > contents.size()) {
+    return false;
+  }
+
+  const uint32_t height = signedHeight < 0
+                              ? static_cast<uint32_t>(-signedHeight)
+                              : static_cast<uint32_t>(signedHeight);
+  const uint64_t rowSize =
+      (static_cast<uint64_t>(width) * 3 + 3) & ~uint64_t(3);
+  const uint64_t endOffset =
+      static_cast<uint64_t>(pixelOffset) + rowSize * height;
+  if (endOffset > contents.size()) {
+    return false;
+  }
+
+  info = {pixelOffset, static_cast<uint32_t>(width), height,
+          static_cast<size_t>(rowSize), signedHeight < 0};
+  return true;
+}
+
+uint16_t bmpColor(uint8_t red, uint8_t green, uint8_t blue) {
+  const uint16_t colors[] = {GxEPD_BLACK, GxEPD_WHITE, GxEPD_RED,
+                             GxEPD_YELLOW};
+  const int palette[][3] = {{0, 0, 0},       {255, 255, 255},
+                            {255, 0, 0},     {255, 255, 0}};
+  uint32_t bestDistance = UINT32_MAX;
+  uint16_t bestColor = GxEPD_BLACK;
+  for (size_t i = 0; i < 4; ++i) {
+    const int redDifference = red - palette[i][0];
+    const int greenDifference = green - palette[i][1];
+    const int blueDifference = blue - palette[i][2];
+    const uint32_t distance =
+        redDifference * redDifference + greenDifference * greenDifference +
+        blueDifference * blueDifference;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestColor = colors[i];
+    }
+  }
+  return bestColor;
+}
+
+void drawBmp(const std::vector<uint8_t>& contents, const BmpInfo& info) {
+  const uint32_t screenWidth = display.width();
+  const uint32_t screenHeight = display.height();
+  uint32_t imageWidth = info.width;
+  uint32_t imageHeight = info.height;
+
+  if (imageWidth > screenWidth || imageHeight > screenHeight) {
+    if (static_cast<uint64_t>(imageWidth) * screenHeight >
+        static_cast<uint64_t>(imageHeight) * screenWidth) {
+      imageHeight = static_cast<uint64_t>(imageHeight) * screenWidth /
+                    imageWidth;
+      imageWidth = screenWidth;
+    } else {
+      imageWidth = static_cast<uint64_t>(imageWidth) * screenHeight /
+                   imageHeight;
+      imageHeight = screenHeight;
+    }
+    imageWidth = max(imageWidth, uint32_t(1));
+    imageHeight = max(imageHeight, uint32_t(1));
+  }
+
+  const uint32_t left = (screenWidth - imageWidth) / 2;
+  const uint32_t top = (screenHeight - imageHeight) / 2;
+  for (uint32_t y = 0; y < imageHeight; ++y) {
+    const uint32_t sourceY =
+        static_cast<uint64_t>(y) * info.height / imageHeight;
+    const uint32_t row = info.topDown ? sourceY : info.height - 1 - sourceY;
+    for (uint32_t x = 0; x < imageWidth; ++x) {
+      const uint32_t sourceX =
+          static_cast<uint64_t>(x) * info.width / imageWidth;
+      const size_t pixelOffset =
+          info.pixelOffset + static_cast<size_t>(row) * info.rowSize +
+          static_cast<size_t>(sourceX) * 3;
+      display.drawPixel(
+          left + x, top + y,
+          bmpColor(contents[pixelOffset + 2], contents[pixelOffset + 1],
+                   contents[pixelOffset]));
+    }
+  }
+}
+
+uint16_t textColor(String colorName) {
+  colorName.toLowerCase();
+  if (colorName == "red") {
+    return GxEPD_RED;
+  }
+  if (colorName == "yellow") {
+    return GxEPD_YELLOW;
+  }
+  if (colorName == "white") {
+    return GxEPD_WHITE;
+  }
+  return GxEPD_BLACK;
+}
+
+enum class CzechAccent {
+  None,
+  Acute,
+  Caron,
+  Ring,
+};
+
+bool mapCzechCharacter(uint32_t codePoint, char& base, CzechAccent& accent) {
+  switch (codePoint) {
+    case 0x00C1: base = 'A'; accent = CzechAccent::Acute; return true;
+    case 0x00E1: base = 'a'; accent = CzechAccent::Acute; return true;
+    case 0x00C9: base = 'E'; accent = CzechAccent::Acute; return true;
+    case 0x00E9: base = 'e'; accent = CzechAccent::Acute; return true;
+    case 0x00CD: base = 'I'; accent = CzechAccent::Acute; return true;
+    case 0x00ED: base = 'i'; accent = CzechAccent::Acute; return true;
+    case 0x00D3: base = 'O'; accent = CzechAccent::Acute; return true;
+    case 0x00F3: base = 'o'; accent = CzechAccent::Acute; return true;
+    case 0x00DA: base = 'U'; accent = CzechAccent::Acute; return true;
+    case 0x00FA: base = 'u'; accent = CzechAccent::Acute; return true;
+    case 0x00DD: base = 'Y'; accent = CzechAccent::Acute; return true;
+    case 0x00FD: base = 'y'; accent = CzechAccent::Acute; return true;
+    case 0x010C: base = 'C'; accent = CzechAccent::Caron; return true;
+    case 0x010D: base = 'c'; accent = CzechAccent::Caron; return true;
+    case 0x010E: base = 'D'; accent = CzechAccent::Caron; return true;
+    case 0x010F: base = 'd'; accent = CzechAccent::Caron; return true;
+    case 0x011A: base = 'E'; accent = CzechAccent::Caron; return true;
+    case 0x011B: base = 'e'; accent = CzechAccent::Caron; return true;
+    case 0x0147: base = 'N'; accent = CzechAccent::Caron; return true;
+    case 0x0148: base = 'n'; accent = CzechAccent::Caron; return true;
+    case 0x0158: base = 'R'; accent = CzechAccent::Caron; return true;
+    case 0x0159: base = 'r'; accent = CzechAccent::Caron; return true;
+    case 0x0160: base = 'S'; accent = CzechAccent::Caron; return true;
+    case 0x0161: base = 's'; accent = CzechAccent::Caron; return true;
+    case 0x0164: base = 'T'; accent = CzechAccent::Caron; return true;
+    case 0x0165: base = 't'; accent = CzechAccent::Caron; return true;
+    case 0x017D: base = 'Z'; accent = CzechAccent::Caron; return true;
+    case 0x017E: base = 'z'; accent = CzechAccent::Caron; return true;
+    case 0x016E: base = 'U'; accent = CzechAccent::Ring; return true;
+    case 0x016F: base = 'u'; accent = CzechAccent::Ring; return true;
+    default: return false;
+  }
+}
+
+uint32_t nextUtf8CodePoint(const String& text, size_t& position) {
+  const uint8_t first = static_cast<uint8_t>(text[position++]);
+  if (first < 0x80) {
+    return first;
+  }
+
+  uint8_t extraBytes;
+  uint32_t codePoint;
+  if (first >= 0xC2 && first <= 0xDF) {
+    extraBytes = 1;
+    codePoint = first & 0x1F;
+  } else if (first >= 0xE0 && first <= 0xEF) {
+    extraBytes = 2;
+    codePoint = first & 0x0F;
+  } else if (first >= 0xF0 && first <= 0xF4) {
+    extraBytes = 3;
+    codePoint = first & 0x07;
+  } else {
+    return '?';
+  }
+
+  if (position + extraBytes > text.length()) {
+    return '?';
+  }
+  for (uint8_t i = 0; i < extraBytes; ++i) {
+    const uint8_t next = static_cast<uint8_t>(text[position++]);
+    if ((next & 0xC0) != 0x80) {
+      return '?';
+    }
+    codePoint = (codePoint << 6) | (next & 0x3F);
+  }
+
+  if ((extraBytes == 2 && codePoint < 0x800) ||
+      (extraBytes == 3 && codePoint < 0x10000) ||
+      (codePoint >= 0xD800 && codePoint <= 0xDFFF) || codePoint > 0x10FFFF) {
+    return '?';
+  }
+  return codePoint;
+}
+
+void drawCzechAccent(int16_t x, int16_t y, uint8_t size, CzechAccent accent,
+                     uint16_t color) {
+  const int16_t centerX = x + 3 * size;
+  const int16_t topY = y - 4 * size;
+  if (accent == CzechAccent::Acute) {
+    display.drawLine(centerX - size, topY + 2 * size, centerX + size, topY,
+                     color);
+  } else if (accent == CzechAccent::Caron) {
+    display.drawLine(centerX - 2 * size, topY, centerX, topY + 2 * size,
+                     color);
+    display.drawLine(centerX, topY + 2 * size, centerX + 2 * size, topY,
+                     color);
+  } else if (accent == CzechAccent::Ring) {
+    display.drawCircle(centerX, topY + size, size, color);
+  }
+}
+
+void drawUtf8Text(const String& text, uint8_t size, uint16_t color) {
+  size_t position = 0;
+  while (position < text.length()) {
+    const uint32_t codePoint = nextUtf8CodePoint(text, position);
+    if (codePoint < 0x80) {
+      display.write(static_cast<uint8_t>(codePoint));
+      continue;
+    }
+
+    char base;
+    CzechAccent accent = CzechAccent::None;
+    if (!mapCzechCharacter(codePoint, base, accent)) {
+      display.write('?');
+      continue;
+    }
+
+    const int16_t x = display.getCursorX();
+    const int16_t y = display.getCursorY();
+    display.write(static_cast<uint8_t>(base));
+    if (base == 'i' && accent == CzechAccent::Acute) {
+      display.fillRect(x + 2 * size, y, size, size, GxEPD_WHITE);
+    }
+    drawCzechAccent(x, y, size, accent, color);
+  }
+}
+
+void drawTextRecords(const std::vector<uint8_t>& contents) {
+  size_t position = 0;
+  while (position < contents.size()) {
+    String fields[6];
+    bool completeRecord = true;
+    for (String& field : fields) {
+      size_t end = position;
+      while (end < contents.size() && contents[end] != ';') {
+        ++end;
+      }
+      if (end == contents.size()) {
+        completeRecord = false;
+        break;
+      }
+      while (position < end) {
+        field += static_cast<char>(contents[position++]);
+      }
+      field.trim();
+      ++position;
+    }
+
+    if (!completeRecord) {
+      return;
+    }
+    if (fields[0] != "T") {
+      continue;
+    }
+
+    const int pixelHeight = constrain(fields[3].toInt(), 1, 160);
+    const uint8_t textSize = (pixelHeight + 7) / 8;
+    const uint16_t color = textColor(fields[4]);
+    display.setTextSize(textSize);
+    display.setTextColor(color);
+    display.setCursor(fields[1].toInt(), fields[2].toInt());
+    drawUtf8Text(fields[5], textSize, color);
+  }
+}
+
 void showCurrentFileName() {
   if (cachedFiles.empty()) {
     drawCenteredText("Zadne soubory. " + noFilesReason);
     return;
   }
-  drawCenteredText(cachedFiles[currentFileIndex].name);
+
+  const CachedFile& file = cachedFiles[currentFileIndex];
+  String fileName = file.name;
+  fileName.toLowerCase();
+
+  if (fileName.endsWith(".txt")) {
+    display.firstPage();
+    do {
+      display.fillScreen(GxEPD_WHITE);
+      display.setTextWrap(false);
+      drawTextRecords(file.contents);
+    } while (display.nextPage());
+    return;
+  }
+
+  if (fileName.endsWith(".bmp")) {
+    BmpInfo info{};
+    if (!readBmpInfo(file.contents, info)) {
+      drawCenteredText("BMP nepodporen. Pouzijte 24bit BMP bez komprese.");
+      return;
+    }
+    display.firstPage();
+    do {
+      display.fillScreen(GxEPD_WHITE);
+      drawBmp(file.contents, info);
+    } while (display.nextPage());
+    return;
+  }
+
+  if (fileName.endsWith(".png")) {
+    drawCenteredText("PNG nepodporuji. Pouzijte 24bit BMP bez komprese.");
+    return;
+  }
+
+  drawCenteredText("Nepodporovany format. Pouzijte TXT nebo BMP.");
 }
 
 void setNoFilesReason(const String& reason) {
@@ -466,8 +796,17 @@ void refreshCachedFiles() {
   }
 
   String previousFileName;
+  bool selectedFileContentChanged = false;
   if (!cachedFiles.empty()) {
-    previousFileName = cachedFiles[currentFileIndex].name;
+    const CachedFile& previousFile = cachedFiles[currentFileIndex];
+    previousFileName = previousFile.name;
+    for (const CachedFile& downloadedFile : downloadedFiles) {
+      if (downloadedFile.name == previousFileName) {
+        selectedFileContentChanged =
+            downloadedFile.contents != previousFile.contents;
+        break;
+      }
+    }
   }
 
   const bool hadFiles = !cachedFiles.empty();
@@ -481,7 +820,8 @@ void refreshCachedFiles() {
     }
   }
 
-  if (((cachedFiles.empty() && hadFiles) ||
+  if ((selectedFileContentChanged ||
+       (cachedFiles.empty() && hadFiles) ||
        (!cachedFiles.empty() &&
         cachedFiles[currentFileIndex].name != previousFileName)) &&
       displayMode == DisplayMode::FileName) {
