@@ -30,7 +30,7 @@ class TestClient
                 string pozadavek = "echo " + textecho;
 
                 // Převedení zprávy na bajty
-                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek + "\n");
 
                 // Odeslání požadavku na server
                 stream.Write(dataOdeslat, 0, dataOdeslat.Length);
@@ -69,7 +69,7 @@ class TestClient
                 string pozadavek = "log " + textlogu;
 
                 // Převedení zprávy na bajty
-                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek + "\n");
 
                 // Odeslání požadavku na server
                 stream.Write(dataOdeslat, 0, dataOdeslat.Length);
@@ -103,10 +103,10 @@ class TestClient
             using (NetworkStream stream = client.GetStream())
             {
                 // Zde můžete změnit požadavek na "karta1", "karta2" nebo cokoliv jiného
-                
+
 
                 // Převedení zprávy na bajty
-                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek + "\n");
 
                 // Odeslání požadavku na server
                 stream.Write(dataOdeslat, 0, dataOdeslat.Length);
@@ -144,7 +144,7 @@ class TestClient
                 string pozadavek = "seznamobrazu.txt";
 
                 // Převedení zprávy na bajty
-                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek);
+                byte[] dataOdeslat = Encoding.UTF8.GetBytes(pozadavek + "\n");
 
                 // Odeslání požadavku na server
                 stream.Write(dataOdeslat, 0, dataOdeslat.Length);
@@ -172,7 +172,7 @@ class TestClient
     static void Main()
     {
         // IP adresa serveru (pokud běží na stejném počítači, použijte "127.5000" -> "127.0.0.1")
-        string ipAdresa = "127.0.0.1";
+        string ipAdresa = "192.168.78.253";
         int port = 5000;
         string adresarpameti = @"c:\ctecka\com_ctecka_test\pamet\";
         string adresarkarty = @"c:\ctecka\com_ctecka_test\karta\";

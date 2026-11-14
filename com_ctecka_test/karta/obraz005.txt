@@ -1,0 +1,3 @@
+T;20; 20; 10; red; Pravidla bezpečného zacházení se čtečkou;
+T;20; 20; 10; red; Nikdy nechávej čtečku bez dozoru;
+T;60; 60; 10; black; Nesahej na ni se špinavýma rukama;
