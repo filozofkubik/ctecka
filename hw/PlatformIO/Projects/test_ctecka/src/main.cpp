@@ -27,6 +27,7 @@ constexpr uint8_t epdBusy = 38;
 constexpr uint8_t peripheralPower = 47;
 constexpr uint8_t upButtonPin = 39;
 constexpr uint8_t setButtonPin = 40;
+constexpr uint8_t downButtonPin = 41;
 
 constexpr unsigned long wifiRetryIntervalMs = 10000UL;
 constexpr unsigned long fileRefreshIntervalMs = 10000UL;
@@ -42,11 +43,13 @@ WiFiServer logServer(logServerPort);
 struct CachedFile {
   String name;
   std::vector<uint8_t> contents;
+  uint64_t contentHash;
 };
 
 enum class DisplayMode {
   FileName,
   Diagnostics,
+  Sleeping,
 };
 
 std::vector<CachedFile> cachedFiles;
@@ -64,20 +67,20 @@ bool serverStarted = false;
 bool fileRefreshAttempted = false;
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastFileRefreshMs = 0;
-unsigned long lastUpButtonAcceptedMs = 0;
+unsigned long upButtonStateChangedMs = 0;
 unsigned long setButtonStateChangedMs = 0;
+unsigned long downButtonStateChangedMs = 0;
+int lastRawUpButtonState = HIGH;
+int stableUpButtonState = HIGH;
 int lastRawSetButtonState = HIGH;
 int stableSetButtonState = HIGH;
-volatile bool upButtonPressPending = false;
+int lastRawDownButtonState = HIGH;
+int stableDownButtonState = HIGH;
 volatile bool pingFinished = false;
 volatile bool pingReplyReceived = false;
 volatile uint32_t pingRttMs = 0;
 
 void logMessage(const String& message);
-
-void IRAM_ATTR onUpButtonFalling() {
-  upButtonPressPending = true;
-}
 
 void onPingSuccess(esp_ping_handle_t handle, void*) {
   uint32_t elapsedMs = 0;
@@ -570,6 +573,23 @@ void showCurrentFileName() {
   drawCenteredText("Nepodporovany format. Pouzijte TXT nebo BMP.");
 }
 
+void showSleepingMessage() {
+  constexpr uint8_t textSize = 3;
+  constexpr int textWidth = 4 * 6 * textSize;
+  constexpr int textHeight = 8 * textSize;
+
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextWrap(false);
+    display.setTextColor(GxEPD_BLACK);
+    display.setTextSize(textSize);
+    display.setCursor((display.width() - textWidth) / 2,
+                      (display.height() - textHeight) / 2);
+    drawUtf8Text("spím", textSize, GxEPD_BLACK);
+  } while (display.nextPage());
+}
+
 void setNoFilesReason(const String& reason) {
   if (noFilesReason == reason) {
     return;
@@ -746,6 +766,15 @@ bool requestFileServer(const String& request, std::vector<uint8_t>& response) {
   return false;
 }
 
+uint64_t hashContents(const std::vector<uint8_t>& contents) {
+  uint64_t hash = 14695981039346656037ULL;
+  for (uint8_t byte : contents) {
+    hash ^= byte;
+    hash *= 1099511628211ULL;
+  }
+  return hash;
+}
+
 void refreshCachedFiles() {
   std::vector<uint8_t> listBytes;
   if (!requestFileServer("seznamobrazu.txt", listBytes)) {
@@ -789,8 +818,9 @@ void refreshCachedFiles() {
         return;
       }
 
+      const uint64_t contentHash = hashContents(contents);
       downloadedFiles.push_back(
-          CachedFile{fileName, std::move(contents)});
+          CachedFile{fileName, std::move(contents), contentHash});
     }
     start = end + 1;
   }
@@ -803,7 +833,7 @@ void refreshCachedFiles() {
     for (const CachedFile& downloadedFile : downloadedFiles) {
       if (downloadedFile.name == previousFileName) {
         selectedFileContentChanged =
-            downloadedFile.contents != previousFile.contents;
+            downloadedFile.contentHash != previousFile.contentHash;
         break;
       }
     }
@@ -867,15 +897,10 @@ bool buttonPressed(uint8_t pin, int& lastRawState, int& stableState,
 }
 
 void handleUpButton() {
-  noInterrupts();
-  const bool pressed = upButtonPressPending;
-  upButtonPressPending = false;
-  interrupts();
-  const unsigned long now = millis();
-  if (!pressed || now - lastUpButtonAcceptedMs < buttonDebounceMs) {
+  if (!buttonPressed(upButtonPin, lastRawUpButtonState, stableUpButtonState,
+                     upButtonStateChangedMs)) {
     return;
   }
-  lastUpButtonAcceptedMs = now;
 
   logMessage("Stisknuto tlacitko UP.");
   if (!cachedFiles.empty()) {
@@ -883,6 +908,15 @@ void handleUpButton() {
   }
   displayMode = DisplayMode::FileName;
   showCurrentFileName();
+}
+
+void handleDownButton() {
+  if (buttonPressed(downButtonPin, lastRawDownButtonState,
+                    stableDownButtonState, downButtonStateChangedMs)) {
+    logMessage("Stisknuto tlacitko DOWN.");
+    displayMode = DisplayMode::Sleeping;
+    showSleepingMessage();
+  }
 }
 
 void handleSetButton() {
@@ -926,11 +960,13 @@ void setup() {
   digitalWrite(peripheralPower, HIGH);
   pinMode(upButtonPin, INPUT);
   pinMode(setButtonPin, INPUT);
+  pinMode(downButtonPin, INPUT);
+  lastRawUpButtonState = digitalRead(upButtonPin);
+  stableUpButtonState = lastRawUpButtonState;
   lastRawSetButtonState = digitalRead(setButtonPin);
   stableSetButtonState = lastRawSetButtonState;
-  lastUpButtonAcceptedMs = millis() - buttonDebounceMs;
-  attachInterrupt(digitalPinToInterrupt(upButtonPin), onUpButtonFalling,
-                  FALLING);
+  lastRawDownButtonState = digitalRead(downButtonPin);
+  stableDownButtonState = lastRawDownButtonState;
   delay(100);
 
   SPI.begin(epdSck, 13, epdMosi, epdCs);
@@ -947,6 +983,7 @@ void loop() {
   handleTcpClient();
   refreshFilesIfDue();
   handleUpButton();
+  handleDownButton();
   handleSetButton();
 
   delay(1);
