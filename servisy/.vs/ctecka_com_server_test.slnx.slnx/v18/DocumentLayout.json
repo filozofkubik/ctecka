@@ -1,0 +1,56 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\ctecka\\servisy\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{D21B4B48-F42A-C319-40FE-5010D48B7C85}|ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj|c:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D21B4B48-F42A-C319-40FE-5010D48B7C85}|ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj|solutionrelative:ctecka_com_server_test.slnx\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D21B4B48-F42A-C319-40FE-5010D48B7C85}|ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj|c:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{D21B4B48-F42A-C319-40FE-5010D48B7C85}|ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj|solutionrelative:ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\Program.cs",
+              "RelativeDocumentMoniker": "ctecka_com_server_test.slnx\\Program.cs",
+              "ToolTip": "C:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\Program.cs",
+              "RelativeToolTip": "ctecka_com_server_test.slnx\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-11-15T10:15:09.491Z",
+              "EditorCaption": "",
+              "OwnerCaption": "%2"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ctecka_com_server_test.slnx",
+              "DocumentMoniker": "C:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj",
+              "RelativeDocumentMoniker": "ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj",
+              "ToolTip": "C:\\ctecka\\servisy\\ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj",
+              "RelativeToolTip": "ctecka_com_server_test.slnx\\ctecka_com_server_test.slnx.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-11-15T10:15:05.922Z",
+              "EditorCaption": "",
+              "OwnerCaption": "ctecka_com_server_test.slnx"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
