@@ -1,18 +1,19 @@
-﻿using System.Text.Json;
+﻿using StahovaciServisa.stahovace.komponety;
+using System.Text.Json;
 using System.Xml.Linq;
-using StahovaciServisa.stahovace.komponety;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace StahovaciServisa.stahovace
 {
     public class Pocasi : IDataProvider
     {
-        private const string ChmuXmlUrl =
-            "https://opendata.chmi.cz/meteorology/weather/forecast/now/web_pCRntx_161600.json";
+        private readonly string ChmuXmlUrl;//             "https://opendata.chmi.cz/meteorology/weather/forecast/now/web_pCRntx_161600.json";
         private readonly Konfigurace _k;
         public Pocasi(Konfigurace konfigurace)
         {
             _k = konfigurace;
+            ChmuXmlUrl= _k.url;
         }
 
         public string Nazev => "Český hydrometeorologický úřad";
