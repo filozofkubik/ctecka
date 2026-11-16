@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StahovaciServisa.stahovace.komponety;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Linq;
@@ -13,12 +14,12 @@ namespace StahovaciServisa.stahovace
             "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml";
 
 
-      
 
+        private readonly Konfigurace _k;
 
-        public CnbKurzy()
+        public CnbKurzy(Konfigurace konfigurace)
         {
-       
+            _k = konfigurace;
         }
 
 
@@ -26,21 +27,26 @@ namespace StahovaciServisa.stahovace
 
 
 
-        public  XElement ZiskejData()
+        public XElement ZiskejData()
         {
-            HttpClient httpClient = new HttpClient();
 
-            var xml = httpClient.GetStringAsync(CnbXmlUrl).GetAwaiter().GetResult();
+            try
+            {
+                Logovani.ZapisDoLogu(UrovenLogovani.Info, _k.urovenLogovani, _k.chybovyadresar, "Stahuji data z ČNB");
+                HttpClient httpClient = new HttpClient();
 
-       
+                var xml = httpClient.GetStringAsync(CnbXmlUrl).GetAwaiter().GetResult();
 
+                var dokument = XDocument.Parse(xml);
 
-           
-
-            var dokument = XDocument.Parse(xml);
-
-
-            return dokument.Root!;
+                Logovani.ZapisDoLogu(UrovenLogovani.Info, _k.urovenLogovani, _k.chybovyadresar, "dokončweno stahovaní data z ČNB");
+                return dokument.Root!;
+            }
+            catch (Exception e)
+            {
+                Logovani.ZapisDoLogu(UrovenLogovani.Chyba, _k.urovenLogovani, _k.chybovyadresar, $"Chyba při stahování dat z ČNB: {e.Message}");
+                throw; 
+            }
         }
     }
 }

@@ -11,4 +11,26 @@
     <Folder Include="stahovace\StahovaciServisa\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="11.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="App.config">
+      <CopyToOutputDirectory>&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;configuration&gt;
+  &lt;appSettings&gt;
+    &lt;add key="ApiUrl" value="https://api.example.com" /&gt;
+    &lt;add key="Timeout" value="30" /&gt;
+  &lt;/appSettings&gt;
+&lt;/configuration&gt;&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;configuration&gt;
+  &lt;appSettings&gt;
+    &lt;add key="ApiUrl" value="https://api.example.com" /&gt;
+    &lt;add key="Timeout" value="30" /&gt;
+  &lt;/appSettings&gt;
+&lt;/configuration&gt;</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

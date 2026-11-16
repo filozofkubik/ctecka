@@ -14,7 +14,7 @@ namespace StahovaciServisa.stahovace
      
         string Nazev { get; }
 
-       void  nastavKonfiguraci ( IKonfigurace konfigurace);
+
 
         XElement ZiskejData();
     }

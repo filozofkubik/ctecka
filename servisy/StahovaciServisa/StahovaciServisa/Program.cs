@@ -1,18 +1,31 @@
 ﻿using StahovaciServisa.stahovace;
+using StahovaciServisa.stahovace.komponety;
 using System;
+using System.Configuration;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
-
 namespace StahovaciServisa
 {
     class Program
     {
         static void Main(string[] args)
         {
-            string cesta = @"c:\ctecka\com_zpracovani\vystup.xml";
+            string UrovenLogu = ConfigurationManager.AppSettings["UrovenLogu"];
+            string Adresarlogu = ConfigurationManager.AppSettings["Adresarlogu"];
+            string AdresarDat = ConfigurationManager.AppSettings["AdresarDat"];
+            string AdresacHMU = ConfigurationManager.AppSettings["AdresacHMU"];
+            string AdresacNB = ConfigurationManager.AppSettings["AdresacNB"];
 
-            Pocasi pocasi = new Pocasi();
-            CnbKurzy cnbKurzy = new CnbKurzy();
-            AktualniCasProvider aktualniCasProvider = new AktualniCasProvider();
+
+            string cesta = AdresarDat+ "\\vystup.xml";
+
+            UrovenLogovani urovenLogovani = (UrovenLogovani)Enum.Parse(typeof(UrovenLogovani), UrovenLogu);
+
+
+
+            Pocasi pocasi = new Pocasi(new stahovace.komponety.Konfigurace(AdresacHMU,Adresarlogu, urovenLogovani));
+            CnbKurzy cnbKurzy = new CnbKurzy(new stahovace.komponety.Konfigurace(AdresacNB, Adresarlogu, urovenLogovani));
+            AktualniCasProvider aktualniCasProvider = new AktualniCasProvider(new stahovace.komponety.Konfigurace("", Adresarlogu, urovenLogovani));
 
             XDocument doc = new XDocument(
     new XDeclaration("1.0", "utf-8", "yes"),

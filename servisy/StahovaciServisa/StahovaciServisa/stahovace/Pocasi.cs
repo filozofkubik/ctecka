@@ -9,9 +9,10 @@ namespace StahovaciServisa.stahovace
     {
         private const string ChmuXmlUrl =
             "https://opendata.chmi.cz/meteorology/weather/forecast/now/web_pCRntx_161600.json";
-
-        public Pocasi()
+        private readonly Konfigurace _k;
+        public Pocasi(Konfigurace konfigurace)
         {
+            _k = konfigurace;
         }
 
         public string Nazev => "Český hydrometeorologický úřad";
@@ -21,9 +22,10 @@ namespace StahovaciServisa.stahovace
         public XElement ZiskejData( )
         {
             XElement element = null;
-            try { 
-          
-             HttpClient httpClient = new HttpClient();
+            try {
+                Logovani.ZapisDoLogu(UrovenLogovani.Info, _k.urovenLogovani, _k.chybovyadresar, "Stahuji data z ČHMU");
+
+                HttpClient httpClient = new HttpClient();
 
             string json = httpClient.GetStringAsync(ChmuXmlUrl).GetAwaiter().GetResult();
 
@@ -40,12 +42,16 @@ namespace StahovaciServisa.stahovace
                 new XAttribute("Zdroj", this.Nazev),
                 vysledekPocasi
             );
-            } catch (Exception e)
+                Logovani.ZapisDoLogu(UrovenLogovani.Info, _k.urovenLogovani, _k.chybovyadresar, "Stahuji dokončeno data z ČHMU");
+                return element;
+            } 
+            catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Logovani.ZapisDoLogu(UrovenLogovani.Chyba, _k.urovenLogovani, _k.chybovyadresar, $"Chyba při stahování dat z ČHMU: {e.Message}");
+                throw; ;
 
             }
-            return element;
+        
         }
     }
 }
