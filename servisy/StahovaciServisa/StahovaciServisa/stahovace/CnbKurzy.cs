@@ -10,8 +10,7 @@ namespace StahovaciServisa.stahovace
     {
 
 
-        private const string CnbXmlUrl =
-            "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml";
+        private readonly string CnbXmlUrl;//             "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml";
 
 
 
@@ -20,6 +19,7 @@ namespace StahovaciServisa.stahovace
         public CnbKurzy(Konfigurace konfigurace)
         {
             _k = konfigurace;
+            CnbXmlUrl = _k.url;
         }
 
 
