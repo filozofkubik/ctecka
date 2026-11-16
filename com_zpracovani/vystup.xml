@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Zaznamy>
+  <Pocasi Zdroj="Český hydrometeorologický úřad"> DeštivoPočasí (22-07): Bude zataženo, zpočátku zejména na Moravě místy zmenšená oblačnost. Ojediněle, od jihozápadu postupně na většině území se vyskytne občasný déšť. Na horách na severu nad 800 m budou srážky smíšené nebo sněhové. Nejnižší teploty 6 až 1 °C, v 1000 m na horách kolem 0 °C. Slabý, místy mírný jihozápadní vítr 2 až 6 m/s.Předpokládané množství srážek: 0 až 10 mm, na Šumavě kolem 15 mmNový sníh: nad 900 m 0 až 2 cmTlaková tendence:  mírný poklesRozptylové podmínky: většinou dobré</Pocasi>
+  <kurzy banka="CNB" datum="16.11.2026" poradi="220">
+    <tabulka typ="XML_TYP_CNB_KURZY_DEVIZOVEHO_TRHU">
+      <radek kod="AUD" mena="dolar" mnozstvi="1" kurz="14,985" zeme="Austrálie" />
+      <radek kod="BRL" mena="real" mnozstvi="1" kurz="3,885" zeme="Brazílie" />
+      <radek kod="CNY" mena="žen-min-pi" mnozstvi="1" kurz="3,328" zeme="Čína" />
+      <radek kod="DKK" mena="koruna" mnozstvi="1" kurz="3,268" zeme="Dánsko" />
+      <radek kod="EUR" mena="euro" mnozstvi="1" kurz="24,430" zeme="EMU" />
+      <radek kod="PHP" mena="peso" mnozstvi="100" kurz="34,684" zeme="Filipíny" />
+      <radek kod="HKD" mena="dolar" mnozstvi="1" kurz="2,827" zeme="Hongkong" />
+      <radek kod="INR" mena="rupie" mnozstvi="100" kurz="23,616" zeme="Indie" />
+      <radek kod="IDR" mena="rupie" mnozstvi="1000" kurz="1,215" zeme="Indonesie" />
+      <radek kod="ISK" mena="koruna" mnozstvi="100" kurz="17,858" zeme="Island" />
+      <radek kod="ILS" mena="nový šekel" mnozstvi="1" kurz="6,876" zeme="Izrael" />
+      <radek kod="JPY" mena="jen" mnozstvi="100" kurz="13,896" zeme="Japonsko" />
+      <radek kod="ZAR" mena="rand" mnozstvi="1" kurz="1,309" zeme="Jižní Afrika" />
+      <radek kod="CAD" mena="dolar" mnozstvi="1" kurz="15,528" zeme="Kanada" />
+      <radek kod="KRW" mena="won" mnozstvi="100" kurz="1,661" zeme="Korejská republika" />
+      <radek kod="HUF" mena="forint" mnozstvi="100" kurz="6,702" zeme="Maďarsko" />
+      <radek kod="MYR" mena="ringgit" mnozstvi="1" kurz="5,417" zeme="Malajsie" />
+      <radek kod="MXN" mena="peso" mnozstvi="1" kurz="1,195" zeme="Mexiko" />
+      <radek kod="XDR" mena="ZPČ" mnozstvi="1" kurz="29,883" zeme="MMF" />
+      <radek kod="NOK" mena="koruna" mnozstvi="1" kurz="2,311" zeme="Norsko" />
+      <radek kod="NZD" mena="dolar" mnozstvi="1" kurz="12,231" zeme="Nový Zéland" />
+      <radek kod="PLN" mena="zlotý" mnozstvi="1" kurz="5,548" zeme="Polsko" />
+      <radek kod="RON" mena="leu" mnozstvi="1" kurz="4,566" zeme="Rumunsko" />
+      <radek kod="SGD" mena="dolar" mnozstvi="1" kurz="17,211" zeme="Singapur" />
+      <radek kod="SEK" mena="koruna" mnozstvi="1" kurz="2,201" zeme="Švédsko" />
+      <radek kod="CHF" mena="frank" mnozstvi="1" kurz="26,431" zeme="Švýcarsko" />
+      <radek kod="THB" mena="baht" mnozstvi="100" kurz="65,453" zeme="Thajsko" />
+      <radek kod="TRY" mena="lira" mnozstvi="100" kurz="44,055" zeme="Turecko" />
+      <radek kod="USD" mena="dolar" mnozstvi="1" kurz="22,182" zeme="USA" />
+      <radek kod="GBP" mena="libra" mnozstvi="1" kurz="29,278" zeme="Velká Británie" />
+    </tabulka>
+  </kurzy>
+</Zaznamy>
